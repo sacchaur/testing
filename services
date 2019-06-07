@@ -1,0 +1,139 @@
+#!/bin/bash
+#
+#  Command Line Interface to start all services associated with the Getting-Started Tutorial
+#
+#  For this tutorial the commands are merely a convenience script to run docker-compose
+#
+
+set -e
+
+loadData () {
+	./import-data
+	./provision-devices
+	echo ""
+}
+
+waitForDraco(){
+	echo -e "⏳ Waiting for Draco to be available\n"
+	while [ `docker run --network fiware_default --rm appropriate/curl -s -o /dev/null -w %{http_code} 'http://draco:9050/nifi-api/system-diagnostics'` -eq 000 ]
+	do 
+	  echo -e "Draco HTTP state: " `curl -s -o /dev/null -w %{http_code} 'http://draco:9050/nifi-api/system-diagnostics'` " (waiting for 200)"
+	  sleep 10
+	done
+	echo ""
+	echo -e "Now open \033[4mhttp://localhost:9050/nifi\033[0m"
+}
+
+displayServices () {
+	echo ""
+	docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" --filter name=fiware-*
+	echo ""
+}
+
+
+stoppingContainers () {
+	echo "Stopping containers"
+	docker-compose --log-level ERROR -p fiware down -v --remove-orphans
+	#docker-compose --log-level ERROR -f docker-compose/multiple.yml -p fiware down -v --remove-orphans
+}
+
+if (( $# != 1 )); then
+    echo "Illegal number of parameters"
+    echo "usage: services [create|mongodb|mysql|multiple|postgres|stop]"
+    exit 1
+fi
+
+command="$1"
+case "${command}" in
+	"help")
+        echo "usage: services [create|mongodb|mysql|multiple|postgres|stop]"
+        ;;
+    "multiple")
+		stoppingContainers
+		echo -e "Starting seven containers \033[1;34mOrion\033[0m, \033[1;34mDraco\033[0m, \033[1;36mIoT-Agent\033[0m, \033[1;30mTutorial\033[0m and \033[1;30mMongoDB\033[0m, \033[1;30mPostgreSQL\033[0m and \033[1;30mMySQL\033[0m databases."
+		echo -e "- \033[1;34mOrion\033[0m is the context broker"
+		echo -e "- \033[1;34mDraco\033[0m is configured to write context data to Mongo-DB, PostgeSQL and MySQL"
+		echo -e "- \033[1;36mIoT-Agent\033[0m is configured for the UltraLight Protocol"
+		echo -e "- \033[1;30mTutorial\033[0m acts as a series of dummy IoT Sensors over HTTP"
+		echo ""
+		#docker-compose --log-level ERROR -f docker-compose/multiple.yml -p fiware up -d --remove-orphans
+		docker-compose --log-level ERROR -p fiware up -d --remove-orphans
+		loadData
+		displayServices
+		echo -e "Now open \033[4mhttp://localhost:4000/device/monitor\033[0m"
+		waitForDraco
+		;;
+	 "mongodb")
+		stoppingContainers
+		echo -e "Starting five containers \033[1;34mOrion\033[0m, \033[1;34mDraco\033[0m, \033[1;36mIoT-Agent\033[0m, \033[1;30mTutorial\033[0m and a \033[1;30mMongoDB\033[0m database."
+		echo -e "- \033[1;34mOrion\033[0m is the context broker"
+		echo -e "- \033[1;34mDraco\033[0m is configured to write context data to Mongo-DB only"
+		echo -e "- \033[1;36mIoT-Agent\033[0m is configured for the UltraLight Protocol"
+		#echo -e "- \033[1;30mTutorial\033[0m acts as a series of dummy IoT Sensors over HTTP"
+		#echo ""
+		#docker-compose --log-level ERROR -f docker-compose/mongodb.yml -p fiware up -d --remove-orphans
+		docker-compose --log-level ERROR -p fiware up -d --remove-orphans
+		loadData
+		displayServices
+		echo -e "Now open \033[4mhttp://localhost:4000/device/monitor\033[0m"
+		waitForDraco
+		;;
+	"start")
+		stoppingContainers
+		echo -e "Starting five containers \033[1;34mOrion\033[0m, \033[1;34mDraco\033[0m, \033[1;36mIoT-Agent\033[0m, \033[1;30mTutorial\033[0m and a \033[1;30mMongoDB\033[0m database."
+		echo -e "- \033[1;34mOrion\033[0m is the context broker"
+		echo -e "- \033[1;34mDraco\033[0m is configured to write context data to Mongo-DB only"
+		echo -e "- \033[1;36mIoT-Agent\033[0m is configured for the UltraLight Protocol"
+		#echo -e "- \033[1;30mTutorial\033[0m acts as a series of dummy IoT Sensors over HTTP"
+		#echo ""
+		#docker-compose --log-level ERROR -f docker-compose/mongodb.yml -p fiware up -d --remove-orphans
+		docker-compose --log-level ERROR -p fiware up -d --remove-orphans
+		loadData
+		displayServices
+		echo -e "Now open \033[4mhttp://localhost:4000/device/monitor\033[0m"
+		waitForDraco
+		;;	
+    "postgres")
+		stoppingContainers
+		echo -e "Starting six containers \033[1;34mOrion\033[0m, \033[1;34mDraco\033[0m, \033[1;36mIoT-Agent\033[0m, \033[1;30mTutorial\033[0m and \033[1;30mMongoDB\033[0m and \033[1;30mPostgreSQL\033[0m databases."
+		echo -e "- \033[1;34mOrion\033[0m is the context broker"
+		echo -e "- \033[1;34mDraco\033[0m is configured to write context data to PostgreSQL only"
+		echo -e "- \033[1;36mIoT-Agent\033[0m is configured for the UltraLight Protocol"
+		echo -e "- \033[1;30mTutorial\033[0m acts as a series of dummy IoT Sensors over HTTP"
+		echo ""
+		docker-compose --log-level ERROR -p fiware up -d --remove-orphans
+		#docker-compose --log-level ERROR -f docker-compose/postgres.yml -p fiware up -d --remove-orphans
+		loadData
+		displayServices
+		echo -e "Now open \033[4mhttp://localhost:4000/device/monitor\033[0m"
+		waitForDraco
+		;;
+	"mysql")
+		stoppingContainers
+		echo -e "Starting six containers \033[1;34mOrion\033[0m, \033[1;34mDraco\033[0m, \033[1;36mIoT-Agent\033[0m, \033[1;30mTutorial\033[0m and \033[1;30mMongoDB\033[0m and \033[1;30mMySQL\033[0m databases."
+		echo -e "- \033[1;34mOrion\033[0m is the context broker"
+		echo -e "- \033[1;34mDraco\033[0m is configured to write context data to MySQL only"
+		echo -e "- \033[1;36mIoT-Agent\033[0m is configured for the UltraLight Protocol"
+		echo -e "- \033[1;30mTutorial\033[0m acts as a series of dummy IoT Sensors over HTTP"
+		echo ""
+		docker-compose --log-level ERROR -p fiware up -d --remove-orphans
+		#docker-compose  -f docker-compose/mysql.yml -p fiware up -d --remove-orphans
+		loadData
+		displayServices
+		echo -e "Now open \033[4mhttp://localhost:4000/device/monitor\033[0m"
+		waitForDraco
+		;;
+	"stop")
+		stoppingContainers
+		;;
+	"create")
+		echo "Pulling Docker images"
+		docker-compose --log-level ERROR -p fiware pull
+		#docker-compose --log-level ERROR -f docker-compose/multiple.yml -p fiware pull
+		;;
+	*)
+		echo "Command not Found."
+		echo "usage: services [create|mongodb|mysql|multiple|postgres|stop]"
+		exit 127;
+		;;
+esac

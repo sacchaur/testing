@@ -1,0 +1,768 @@
+#!/bin/bash
+#
+#  curl commands to reload the data from the previous tutorial
+#
+#
+
+set -e
+
+
+curl () {
+  docker run --network fiware_default --rm appropriate/curl -s \
+    "$@"
+  printf "."
+}
+
+echo -e "⏳ Waiting for \033[1;34mOrion\033[0m to be available\n"
+while [ `docker run --network fiware_default --rm appropriate/curl -s -o /dev/null -w %{http_code} 'http://orion:1026/version'` -eq 000 ]
+do 
+  echo -e "Context Broker HTTP state: " `curl -s -o /dev/null -w %{http_code} 'http://orion:1026/version'` " (waiting for 200)"
+  sleep 1
+done
+printf "⏳ Loading context data "
+
+########################### Provision TPMS devices.  ###################################
+
+curl -X POST \
+  'http://orion:1026/v2/entities' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "urn:ngsi-ld:region:south",
+    "type": "region",
+    "headofficeaddress": {
+        "type": "PostalAddress",
+        "value": {
+            "streetAddress": "15th Main",
+            "addressRegion": "Kalyan Nagar",
+            "postalCode": "10439"
+        }
+    },
+    "location": {
+        "type": "geo:json",
+        "value": {
+             "type": "Point",
+             "coordinates": [13.3986, 52.5547]
+        }
+    },
+    "name": {
+        "type": "Text",
+        "value": "SouthIndianRegion"
+    }
+}'
+
+
+### Provision a KSRTC service group
+
+curl -X POST \
+  'http://iot-agent:4041/iot/services' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: ksrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+ "services": [
+   {
+     "apikey":      "4jggokg",
+     "cbroker":     "http://orion:1026",
+     "entity_type": "Thing",
+     "resource":    "/iot/d"
+   }
+ ]
+}'
+
+
+### Provision a APSRTC service group
+
+curl -X POST \
+  'http://iot-agent:4041/iot/services' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: apsrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+ "services": [
+   {
+     "apikey":      "4jggoka",
+     "cbroker":     "http://orion:1026",
+     "entity_type": "Thing",
+     "resource":    "/iot/d"
+   }
+ ]
+}'
+
+
+### Provision a OBD2 device in KSRTC service group
+curl -X POST \
+  'http://iot-agent:4041/iot/devices' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: ksrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "devices": [
+    {
+      "device_id": "tpms-vijay",
+      "entity_name": "urn:ngsi-ld:tpms:vijay",
+      "entity_type": "TPMS",
+      "protocol": "PDI-IoTA-UltraLight",
+      "transport": "MQTT",
+      "commands": [
+        {"name": "reconfigure","type": "command"},
+        {"name": "firmwareupdate","type": "command"}
+       ],
+       "attributes": [
+        {"object_id": "ENGINE_RPM", "name": "ENGINE_RPM", "type":"Text"},
+        {"object_id": "BAROMETRIC_PRESSURE", "name": "BAROMETRIC_PRESSURE", "type":"Text"},
+        {"object_id": "WIDEBAND_AIR_FUEL_RATIO", "name": "WIDEBAND_AIR_FUEL_RATIO", "type":"Text"},
+        {"object_id": "TROUBLE_CODES", "name": "TROUBLE_CODES", "type":"Text"},
+        {"object_id": "THROTTLE_POS", "name": "THROTTLE_POS", "type":"Text"},
+        {"object_id": "Long_Term_Fuel_Trim_Bank_1", "name": "Long_Term_Fuel_Trim_Bank_1", "type":"Text"},
+        {"object_id": "Long_Term_Fuel_Trim_Bank_2", "name": "Long_Term_Fuel_Trim_Bank_2", "type":"Text"},
+        {"object_id": "SPEED", "name": "SPEED", "type":"Text"},
+        {"object_id": "DTC_NUMBER", "name": "DTC_NUMBER", "type":"Text"},
+        {"object_id": "FUEL_PRESSURE", "name": "FUEL_PRESSURE", "type":"Text"},
+        {"object_id": "FUEL_RAIL_PRESSURE", "name": "FUEL_RAIL_PRESSURE", "type":"Text"},
+        {"object_id": "ENGINE_OIL_TEMP", "name": "ENGINE_OIL_TEMP", "type":"Text"},
+        {"object_id": "AIR_INTAKE_TEMP", "name": "AIR_INTAKE_TEMP", "type":"Text"},
+        {"object_id": "AIR_FUEL_RATIO", "name": "AIR_FUEL_RATIO", "type":"Text"},
+        {"object_id": "FUEL_LEVEL", "name": "FUEL_LEVEL", "type":"Text"},
+        {"object_id": "ENGINE_COOLANT_TEMP", "name": "ENGINE_COOLANT_TEMP", "type":"Text"},
+        {"object_id": "Short_Term_Fuel_Trim_Bank_1", "name": "Short_Term_Fuel_Trim_Bank_1", "type":"Text"},
+        {"object_id": "TIMING_ADVANCE", "name": "TIMING_ADVANCE", "type":"Text"},
+        {"object_id": "Short_Term_Fuel_Trim_Bank_2", "name": "Short_Term_Fuel_Trim_Bank_2", "type":"Text"},
+        {"object_id": "EQUIV_RATIO", "name": "EQUIV_RATIO", "type":"Text"},
+        {"object_id": "DISTANCE_TRAVELED_MIL_ON", "name": "DISTANCE_TRAVELED_MIL_ON", "type":"Text"},
+        {"object_id": "MAF", "name": "MAF", "type":"Text"},
+        {"object_id": "AMBIENT_AIR_TEMP", "name": "AMBIENT_AIR_TEMP", "type":"Text"},
+        {"object_id": "ENGINE_RUNTIME", "name": "ENGINE_RUNTIME", "type":"Text"},
+        {"object_id": "CONTROL_MODULE_VOLTAGE", "name": "CONTROL_MODULE_VOLTAGE", "type":"Text"},
+        {"object_id": "FUEL_TYPE", "name": "FUEL_TYPE", "type":"Text"},
+        {"object_id": "VIN", "name": "VIN", "type":"Text"},
+        {"object_id": "ENGINE_LOAD", "name": "ENGINE_LOAD", "type":"Text"},
+        {"object_id": "FUEL_CONSUMPTION_RATE", "name": "FUEL_CONSUMPTION_RATE", "type":"Text"},
+        {"object_id": "INTAKE_MANIFOLD_PRESSURE", "name": "INTAKE_MANIFOLD_PRESSURE", "type":"Text"} 
+       ],
+       "static_attributes": [
+         {"name":"refStore", "type": "Relationship","value": "urn:ngsi-ld:region:south"}
+       ]
+    }
+  ]
+}'
+
+
+
+
+
+### Provision a OBD2 device in APSRTC service group
+
+curl -X POST \
+  'http://iot-agent:4041/iot/devices' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: apsrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "devices": [
+    {
+      "device_id": "tpms-prakash",
+      "entity_name": "urn:ngsi-ld:tpms:prakash",
+      "entity_type": "TPMS",
+      "protocol": "PDI-IoTA-UltraLight",
+      "transport": "MQTT",
+      "commands": [
+        {"name": "reconfigure","type": "command"},
+        {"name": "firmwareupdate","type": "command"}
+       ],
+       "attributes": [
+        {"object_id": "ENGINE_RPM", "name": "ENGINE_RPM", "type":"Text"},
+        {"object_id": "BAROMETRIC_PRESSURE", "name": "BAROMETRIC_PRESSURE", "type":"Text"},
+        {"object_id": "WIDEBAND_AIR_FUEL_RATIO", "name": "WIDEBAND_AIR_FUEL_RATIO", "type":"Text"},
+        {"object_id": "TROUBLE_CODES", "name": "TROUBLE_CODES", "type":"Text"},
+        {"object_id": "THROTTLE_POS", "name": "THROTTLE_POS", "type":"Text"},
+        {"object_id": "Long_Term_Fuel_Trim_Bank_1", "name": "Long_Term_Fuel_Trim_Bank_1", "type":"Text"},
+        {"object_id": "Long_Term_Fuel_Trim_Bank_2", "name": "Long_Term_Fuel_Trim_Bank_2", "type":"Text"},
+        {"object_id": "SPEED", "name": "SPEED", "type":"Text"},
+        {"object_id": "DTC_NUMBER", "name": "DTC_NUMBER", "type":"Text"},
+        {"object_id": "FUEL_PRESSURE", "name": "FUEL_PRESSURE", "type":"Text"},
+        {"object_id": "FUEL_RAIL_PRESSURE", "name": "FUEL_RAIL_PRESSURE", "type":"Text"},
+        {"object_id": "ENGINE_OIL_TEMP", "name": "ENGINE_OIL_TEMP", "type":"Text"},
+        {"object_id": "AIR_INTAKE_TEMP", "name": "AIR_INTAKE_TEMP", "type":"Text"},
+        {"object_id": "AIR_FUEL_RATIO", "name": "AIR_FUEL_RATIO", "type":"Text"},
+        {"object_id": "FUEL_LEVEL", "name": "FUEL_LEVEL", "type":"Text"},
+        {"object_id": "ENGINE_COOLANT_TEMP", "name": "ENGINE_COOLANT_TEMP", "type":"Text"},
+        {"object_id": "Short_Term_Fuel_Trim_Bank_1", "name": "Short_Term_Fuel_Trim_Bank_1", "type":"Text"},
+        {"object_id": "TIMING_ADVANCE", "name": "TIMING_ADVANCE", "type":"Text"},
+        {"object_id": "Short_Term_Fuel_Trim_Bank_2", "name": "Short_Term_Fuel_Trim_Bank_2", "type":"Text"},
+        {"object_id": "EQUIV_RATIO", "name": "EQUIV_RATIO", "type":"Text"},
+        {"object_id": "DISTANCE_TRAVELED_MIL_ON", "name": "DISTANCE_TRAVELED_MIL_ON", "type":"Text"},
+        {"object_id": "MAF", "name": "MAF", "type":"Text"},
+        {"object_id": "AMBIENT_AIR_TEMP", "name": "AMBIENT_AIR_TEMP", "type":"Text"},
+        {"object_id": "ENGINE_RUNTIME", "name": "ENGINE_RUNTIME", "type":"Text"},
+        {"object_id": "CONTROL_MODULE_VOLTAGE", "name": "CONTROL_MODULE_VOLTAGE", "type":"Text"},
+        {"object_id": "FUEL_TYPE", "name": "FUEL_TYPE", "type":"Text"},
+        {"object_id": "VIN", "name": "VIN", "type":"Text"},
+        {"object_id": "ENGINE_LOAD", "name": "ENGINE_LOAD", "type":"Text"},
+        {"object_id": "FUEL_CONSUMPTION_RATE", "name": "FUEL_CONSUMPTION_RATE", "type":"Text"},
+        {"object_id": "INTAKE_MANIFOLD_PRESSURE", "name": "INTAKE_MANIFOLD_PRESSURE", "type":"Text"}
+       ],
+       "static_attributes": [
+         {"name":"refStore", "type": "Relationship","value": "urn:ngsi-ld:region:south"}
+       ]
+    }
+  ]
+}'
+
+
+
+#### Register the KSRTC_TPMS service group command
+
+curl -X POST \
+  'http://orion:1026/v2/registrations' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: ksrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "description": "TPMS COMMANDS",
+  "dataProvided": {
+    "entities": [
+      {
+        "id": "urn:ngsi-ld:tpms:vijay", "type": "TPMS"
+      }
+    ],
+    "attrs": [ "reconfigure", "firmwareupdate"]
+  },
+  "provider": {
+    "http": {"url": "http://orion:1026/v1"},
+    "legacyForwarding": true
+  }
+}'
+
+
+#### Register the APSRTC_TPMS service group command
+
+curl -X POST \
+  'http://orion:1026/v2/registrations' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: apsrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "description": "TPMS COMMANDS",
+  "dataProvided": {
+    "entities": [
+      {
+        "id": "urn:ngsi-ld:tpms:prakash", "type": "TPMS"
+      }
+    ],
+    "attrs": [ "reconfigure", "firmwareupdate"]
+  },
+  "provider": {
+    "http": {"url": "http://orion:1026/v1"},
+    "legacyForwarding": true
+  }
+}'
+
+
+
+#
+# Create four Store Entities in various locations across Berlin
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -g -d '{
+  "actionType": "append",
+  "entities": [
+    {
+      "id":"urn:ngsi-ld:Store:001","type":"Store",
+      "address":{"type":"PostalAddress","value":{"streetAddress":"Bornholmer Straße 65","addressRegion":"Berlin","addressLocality":"Prenzlauer Berg","postalCode":"10439"}},
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.3986,52.5547]}},
+      "name":{"type":"Text","value":"Bösebrücke Einkauf"}
+    },
+    {
+      "id":"urn:ngsi-ld:Store:002","type":"Store",
+      "address":{"type":"PostalAddress","value":{"streetAddress":"Friedrichstraße 44","addressRegion":"Berlin","addressLocality":"Kreuzberg","postalCode":"10969"}},
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.3903,52.5075]}},
+      "name":{"type":"Text","value":"Checkpoint Markt"}},
+    {
+      "id":"urn:ngsi-ld:Store:003","type":"Store",
+      "address":{"type":"PostalAddress","value":{"streetAddress":"Mühlenstrasse 10","addressRegion":"Berlin","addressLocality":"Friedrichshain","postalCode":"10243"}},
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4447,52.5031]}},
+      "name":{"type":"Text","value":"East Side Galleria"}
+    },
+    {
+      "id":"urn:ngsi-ld:Store:004","type":"Store",
+      "address":{"type":"PostalAddress","value":{"streetAddress":"Panoramastraße 1A","addressRegion":"Berlin","addressLocality":"Mitte","postalCode":"10178"}},
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4094,52.5208]}},
+      "name":{"type":"Text","value":"Tower Trödelmarkt"}
+    }
+  ]
+}'
+
+#
+# Add Weather and Twitter Responses for Store 1 using random values
+#
+curl -X POST \
+  http://orion:1026/v2/registrations \
+  -H 'Content-Type: application/json' \
+  -d '{
+   "description": "Weather Conditions",   
+   "dataProvided": {
+     "entities": [
+       {
+         "id" : "urn:ngsi-ld:Store:001",
+         "type": "Store"
+       }
+     ],
+     "attrs": [
+      "temperature", "relativeHumidity"
+    ]
+   },
+   "provider": {
+     "http": {
+       "url": "http://context-provider:3000/proxy/v1/random/weatherConditions"
+     },
+     "legacyForwarding": true
+   },
+   "status": "active"
+}'
+
+curl -X POST \
+  http://orion:1026/v2/registrations \
+  -H 'Content-Type: application/json' \
+  -d '{
+   "description": "Tweeting Cat Facts",
+   "dataProvided": {
+     "entities": [
+       {
+         "id" : "urn:ngsi-ld:Store:001",
+         "type": "Store"
+       }
+     ],
+     "attrs": [
+      "tweets"
+    ]
+   },
+   "provider": {
+     "http": {
+       "url": "http://context-provider:3000/proxy/v1/catfacts/tweets"
+     },
+     "legacyForwarding": true
+   },
+   "status": "active"
+}'
+
+
+# Add Weather and Twitter Responses for Store 2 using real sources
+#
+# curl -X POST \
+#   'http://orion:1026/v2/registrations' \
+#   -H 'Content-Type: application/json' \
+#   -d '{
+#   "description": "Store:002 - Real Temperature and Humidity",
+#   "dataProvided": {
+#     "entities": [
+#       {
+#         "id": "urn:ngsi-ld:Store:002",
+#         "type": "Store"
+#       }
+#     ],
+#     "attrs": [
+#       "temperature",
+#       "relativeHumidity"
+#     ]
+#   },
+#   "provider": {
+#     "http": {
+#       "url": "http://context-provider:3000/proxy/weather/number/temperature:temp,relativeHumidity:humidity/berlin%2cde"
+#     },
+#      "legacyForwarding": true
+#   }
+# }'
+
+# curl -X POST \
+#   'http://orion:1026/v2/registrations' \
+#   -H 'Content-Type: application/json' \
+#   -d '{
+#   "description": "Store:002 Real Tweets",
+#   "dataProvided": {
+#     "entities": [
+#       {
+#         "id": "urn:ngsi-ld:Store:002",
+#         "type": "Store"
+#       }
+#     ],
+#     "attrs": [
+#       "tweets"
+#     ]
+#   },
+#   "provider": {
+#     "http": {
+#       "url": "http://context-provider:3000/proxy/twitter/list/tweets:text/FIWARE"
+#     },
+#      "legacyForwarding": true
+#   }
+# }'
+
+#
+# Create a series of Shelf Entities and place the in each Store.
+# Each shelf is designed to hold one product.
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -g -d '{
+  "actionType": "append",
+  "entities": [
+  {
+      "id":"urn:ngsi-ld:Shelf:unit001","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.3986112,52.554699]}},
+      "maxCapacity":{"type":"Integer","value":50},
+      "name":{"type":"Text","value":"Corner Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit002","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.3987221,52.554664]}},
+      "maxCapacity":{"type":"Integer","value":100},
+      "name":{"type":"Text","value":"Wall Unit 1"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit003","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.3987221,52.554664]}},
+      "maxCapacity":{"type":"Integer","value":100},
+      "name":{"type":"Text","value":"Wall Unit 2"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit004","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.390311,52.507522]}},
+      "maxCapacity":{"type":"Integer","value":50},
+      "name":{"type":"Text","value":"Corner Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:002"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit005","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.390309,52.50751]}},
+      "maxCapacity":{"type":"Integer","value":200},
+      "name":{"type":"Text","value":"Long Wall Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:002"}
+    },
+    {
+      "id":"urn:ngsi-ld:Shelf:unit006","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4447112,52.503199]}},
+      "maxCapacity":{"type":"Integer","value":50},
+      "name":{"type":"Text","value":"Corner Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit007","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4447221,52.503164]}},
+      "maxCapacity":{"type":"Integer","value":100},
+      "name":{"type":"Text","value":"Wall Unit 1"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit008","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4447221,52.503164]}},
+      "maxCapacity":{"type":"Integer","value":100},
+      "name":{"type":"Text","value":"Wall Unit 2"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit009","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.444711,52.503122]}},
+      "maxCapacity":{"type":"Integer","value":50},
+      "name":{"type":"Text","value":"Corner Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"}
+    },
+  {
+      "id":"urn:ngsi-ld:Shelf:unit010","type":"Shelf",
+      "location":{"type":"geo:json","value":{"type":"Point","coordinates":[13.4094111,52.5208028]}},
+      "maxCapacity":{"type":"Integer","value":200},
+      "name":{"type":"Text","value":"Long Wall Unit"},
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:004"}
+    }
+  ]
+}'
+
+#
+# Create a series of Product Entities. 
+# These are a series of alcoholc and non-alcoholic drinks which are available to sell.
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "actionType":"APPEND",
+  "entities":[
+    {
+      "id":"urn:ngsi-ld:Product:001", "type":"Product",
+      "name":{"type":"Text", "value":"Beer"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:002", "type":"Product",
+      "name":{"type":"Text", "value":"Red Wine"},
+      "size":{"type":"Text", "value": "M"},
+      "price":{"type":"Integer", "value": 1099}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:003", "type":"Product",
+      "name":{"type":"Text", "value":"White Wine"},
+      "size":{"type":"Text", "value": "M"},
+      "price":{"type":"Integer", "value": 1499}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:004", "type":"Product",
+      "name":{"type":"Text", "value":"Vodka"},
+      "size":{"type":"Text", "value": "XL"},
+      "price":{"type":"Integer", "value": 5000}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:005", "type":"Product",
+      "name":{"type":"Text", "value":"Lager"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:006", "type":"Product",
+      "name":{"type":"Text", "value":"Whisky"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:007", "type":"Product",
+      "name":{"type":"Text", "value":"Gin"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:008", "type":"Product",
+      "name":{"type":"Text", "value":"Apple Juice"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    },
+    {
+      "id":"urn:ngsi-ld:Product:009", "type":"Product",
+      "name":{"type":"Text", "value":"Orange Juice"},
+      "size":{"type":"Text", "value": "S"},
+      "price":{"type":"Integer", "value": 99}
+    }
+  ]
+}'
+
+
+#
+# Create a series of InventoryItems Entities. 
+# These the drinks on order in Store:001
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "actionType":"APPEND",
+  "entities":[
+    {
+      "id":"urn:ngsi-ld:InventoryItem:001","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit001"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:001"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":15}
+    },
+    {
+      "id":"urn:ngsi-ld:InventoryItem:002","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit002"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:003"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    },
+    {
+      "id":"urn:ngsi-ld:InventoryItem:003","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:001"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit003"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:004"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    }
+   
+  ]
+}'
+#
+# Create a series of InventoryItems Entities. 
+# These the drinks on order in Store:002
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "actionType":"APPEND",
+  "entities":[
+    {
+      "id":"urn:ngsi-ld:InventoryItem:004","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:002"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit004"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:001"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":15}
+    },
+    {
+      "id":"urn:ngsi-ld:InventoryItem:005","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:002"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit005"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:002"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":15}
+    }
+  ]
+}'
+#
+# Create a series of InventoryItems Entities. 
+# These the drinks on order in Store:003
+# Note that Shelf Unit009 is currently unused
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "actionType":"APPEND",
+  "entities":[
+    {
+      "id":"urn:ngsi-ld:InventoryItem:006","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit006"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:001"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    },
+    {
+      "id":"urn:ngsi-ld:InventoryItem:007","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit007"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:008"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    },
+    {
+      "id":"urn:ngsi-ld:InventoryItem:008","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:003"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit008"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:009"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    }
+   
+  ]
+}'
+#
+# Create a series of InventoryItems Entities. 
+# These the drinks on order in Store:004
+#
+curl -X POST \
+  'http://orion:1026/v2/op/update' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "actionType":"APPEND",
+  "entities":[
+    {
+      "id":"urn:ngsi-ld:InventoryItem:401","type":"InventoryItem",
+      "refStore":{"type":"Relationship","value":"urn:ngsi-ld:Store:004"},
+      "refShelf":{"type":"Relationship","value":"urn:ngsi-ld:Shelf:unit010"},
+      "refProduct":{"type":"Relationship","value":"urn:ngsi-ld:Product:001"},
+      "stockCount":{"type":"Integer","value":10000},
+      "shelfCount":{"type":"Integer","value":50}
+    }
+   
+  ]
+}'
+
+
+
+
+### Send data from OBD2 device through mqtt
+
+
+
+docker run -it --rm --name mqtt-publisher --network \
+  fiware_default efrecon/mqtt-client pub -h mosquitto -m \
+   "ENGINE_RPM|1011RPM|BAROMETRIC_PRESSURE|NODATA|WIDEBAND_AIR_FUEL_RATIO|NODATA|TROUBLE_CODES|NODOTA|THROTTLE_POS|89.8%|Long_Term_Fuel_Trim_Bank_1|NODATA|Long_Term_Fuel_Trim_Bank_2|NODATA|SPEED|24km/h|DTC_NUMBER|MIL is OFF0 codes|FUEL_PRESSURE|NODATA|FUEL_RAIL_PRESSURE|25600kPa|ENGINE_OIL_TEMP|NODATA|AIR_INTAKE_TEMP|40C|AIR_FUEL_RATIO|NODATA|FUEL_LEVEL|NODATA|ENGINE_COOLANT_TEMP|81C|Short_Term_Fuel_Trim_Bank_1|NODATA|TIMING_ADVANCE|NODATA|Short_Term_Fuel_Trim_Bank_2|NODATA|EQUIV_RATIO|NODATA|DISTANCE_TRAVELED_MIL_ON|0km|MAF|10.36g/s|AMBIENT_AIR_TEMP|NODATA|ENGINE_RUNTIME|NODATA|CONTROL_MODULE_VOLTAGE|NODATA|FUEL_TYPE|NODATA|VIN|MEEHSRCFFG6000763|ENGINE_LOAD|49.4%|FUEL_CONSUMPTION_RATE|NODATA|INTAKE_MANIFOLD_PRESSURE|98kPa" \
+   -t "/4jggokg/tpms-vijay/attrs"
+
+
+
+# ### Run Command from context brocker to devices. [KSRTC]
+
+curl -iX PATCH \
+  'http://localhost:1026/v2/entities/urn:ngsi-ld:tpms:vijay/attrs' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: ksrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "reconfigure": {
+      "type" : "command",
+      "value" : ""
+  }
+}'
+
+curl -iX POST \
+  'http://localhost:1026/v2/subscriptions' \
+  -H 'Content-Type: application/json' \
+  -H 'fiware-service: ksrtc_tpms' \
+  -H 'fiware-servicepath: /' \
+  -d '{
+  "description": "Notify Draco of all context changes",
+  "subject": {
+    "entities": [
+      {
+        "idPattern": ".*"
+      }
+    ]
+  },
+  "notification": {
+    "http": {
+      "url": "http://draco:5050/v2/notify"
+    }
+  },
+  "throttling": 5
+}'
+
+
+# curl -iX PATCH \
+#   'http://orion:1026/v2/entities/urn:ngsi-ld:tpms:vijay/attrs' \
+#   -H 'Content-Type: application/json' \
+#   -H 'fiware-service: ksrtc_tpms' \
+#   -H 'fiware-servicepath: /' \
+#   -d '{
+#   "firmwareupdate": {
+#       "type" : "command",
+#       "value" : ""
+#   }
+# }'
+
+
+# ### Run Command from context brocker to devices. [APSRTC]
+
+# curl -iX PATCH \
+#   'http://orion:1026/v2/entities/urn:ngsi-ld:tpms:prakash/attrs' \
+#   -H 'Content-Type: application/json' \
+#   -H 'fiware-service: apsrtc_tpms' \
+#   -H 'fiware-servicepath: /' \
+#   -d '{
+#   "reconfigure": {
+#       "type" : "command",
+#       "value" : ""
+#   }
+# }'
+
+# ### Run queries linking store and device
+
+# curl -G -X GET \
+#   'http://orion:1026/v2/entities' \
+#   -d 'q=refStore==urn:ngsi-ld:Store:001' \
+#   -d 'options=count' \
+#   -d 'attrs=type' \
+#   -H 'fiware-servicepath: /'
+
+# echo -e " \033[1;32mdone\033[0m"
+
+
+
